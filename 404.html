@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <title>Error 404</title>
+  <style>
+    html,body{margin:0;width:100%;min-height:100%;background:#fff}
+    body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-content:center;font-family:Arial,Helvetica,sans-serif;color:#111;text-align:center}
+    .error404 h1{margin:0 0 8px;font-size:32px;line-height:1.15;font-weight:700}
+    .error404 p{margin:0;font-size:14px;line-height:1.4;font-weight:400;color:#444}
+  </style>
+  <script>
+  (function () {
+    'use strict';
+    try {
+      var path = decodeURIComponent(location.pathname || '');
+      var marker = '/files-portal/';
+      var at = path.indexOf(marker);
+      if (at < 0) return;
+
+      var token = path.slice(at + marker.length).replace(/^\/+|\/+$/g, '');
+      if (!token || token.indexOf('/') !== -1 || token.toLowerCase() === 'viewer.html' || token.toLowerCase() === 'index.html') return;
+
+      var deploymentBase = path.slice(0, at).replace(/\/+$/, '');
+      var viewer = (deploymentBase || '') + '/files-portal/viewer.html?__route=' + encodeURIComponent(token);
+
+      // Important: viewer.html is a real file (HTTP 200). It restores the clean URL
+      // before Angular/document-router start, so every token can come only from routes.json.
+      location.replace(viewer);
+    } catch (_) {}
+  })();
+  </script>
+</head>
+<body>
+  <main class="error404" role="main">
+    <div><h1>Error 404</h1><p>Page not found.</p></div>
+  </main>
+</body>
+</html>
