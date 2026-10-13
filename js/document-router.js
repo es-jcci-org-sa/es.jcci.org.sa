@@ -4,10 +4,6 @@
   var root = (window.__UNIFIED_DEPLOYMENT_ROOT__ || '/');
   var nativeFetch = window.fetch ? window.fetch.bind(window) : null;
   var routesPromise = null;
-
-  // Capture blank mode ONCE, before the Angular app can rewrite the URL/query string.
-  // The root index loads the viewer with ?__blank=1, so the viewer must stay blank
-  // even if the app later removes that query parameter from its internal URL.
   var forceBlank = false;
 
   function rootUrl(relative) {
@@ -15,14 +11,15 @@
   }
 
   function currentToken() {
-    // Strict routing: use only the exact public token passed by the outer router.
-    // Never use the Angular bootstrap URL, a previous token, or a default record.
     if (window.__DOCUMENT_ROUTE_TOKEN__) return String(window.__DOCUMENT_ROUTE_TOKEN__);
-    // Safety only for very early execution before the bootstrap helper sets the global.
-    // This reads the same explicit __route value; it is NOT a fallback to another record.
     try {
-      var q = new URLSearchParams(location.search || '').get('__route');
-      return q ? String(q) : '';
+      var path = decodeURIComponent(location.pathname || '');
+      var marker = '/files-portal/';
+      var at = path.indexOf(marker);
+      if (at < 0) return '';
+      var token = path.slice(at + marker.length).replace(/^\/+|\/+$/g, '');
+      if (!token || token.indexOf('/') !== -1 || /^(?:viewer|index)\.html$/i.test(token)) return '';
+      return token;
     } catch (_) {
       return '';
     }
@@ -32,7 +29,7 @@
     return String(url || '').indexOf('ViewDocumentV2') !== -1;
   }
 
-  function restorePublicRoute() { /* parent URL is already the exact public route */ }
+  function restorePublicRoute() { /* exact public URL stays unchanged */ }
 
   function DocumentNotFoundError(message) {
     this.name = 'DocumentNotFoundError';
@@ -44,7 +41,6 @@
 
   function showNotFoundPage() {
     if (window.__DOCUMENT_NOT_FOUND_SHOWN__) return;
-    try { if (window.parent && window.parent !== window) window.parent.postMessage({ type: 'DOCUMENT_NOT_FOUND' }, location.origin); } catch (_) {}
     window.__DOCUMENT_NOT_FOUND_SHOWN__ = true;
 
     try {
@@ -229,5 +225,9 @@
     RoutedXHR.prototype = NativeXHR.prototype;
     Object.keys(NativeXHR).forEach(function (key) { try { RoutedXHR[key] = NativeXHR[key]; } catch (_) {} });
     window.XMLHttpRequest = RoutedXHR;
+  }
+
+  if (window.__PUBLIC_ROUTE_INVALID__) {
+    setTimeout(showNotFoundPage, 0);
   }
 })();

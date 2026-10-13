@@ -1,26 +1,32 @@
 <!DOCTYPE html><html lang="ar" dir="rtl"><head><script>
 (function () {
-  // The public token is passed explicitly by the outer 404 router. It is the ONLY token
-  // document-router may use. Angular is bootstrapped on a known syntactically valid
-  // internal route inside this iframe; the parent address bar never changes.
+  'use strict';
+  // Strict public routing: the token in the requested URL is the only token used.
+  // Never rewrite the address to a bootstrap/default token.
   try {
-    var params = new URLSearchParams(location.search || '');
-    var routeToken = params.get('__route');
-    if (!routeToken) {
-      window.__DOCUMENT_ROUTE_TOKEN__ = '';
-      return;
-    }
-    window.__DOCUMENT_ROUTE_TOKEN__ = String(routeToken);
-
     var path = decodeURIComponent(location.pathname || '');
     var marker = '/files-portal/';
     var at = path.indexOf(marker);
-    if (at < 0) return;
-    var deploymentBase = path.slice(0, at).replace(/\/+$/, '');
-    // Bootstrap-only route. It is never used to choose document data.
-    var bootstrapToken = 'U2FsdGVkX1_RJ5EuawYTfCX6-e8APfHJTQMmZsx4i1vd_9PyyxqkpCK2WeB_4UjnXBTXvWvZebgiQkSGw5nFn9LTfQ';
-    history.replaceState(history.state, '', (deploymentBase || '') + marker + bootstrapToken);
-  } catch (_) {}
+    var token = '';
+
+    // viewer.html can still be opened directly for local/manual testing with ?__route=TOKEN.
+    try { token = new URLSearchParams(location.search || '').get('__route') || ''; } catch (_) {}
+
+    if (!token && at >= 0) {
+      token = path.slice(at + marker.length).replace(/^\/+|\/+$/g, '');
+    }
+
+    if (!token || token.indexOf('/') !== -1 || /^(?:viewer|index)\.html$/i.test(token)) {
+      window.__DOCUMENT_ROUTE_TOKEN__ = '';
+      window.__PUBLIC_ROUTE_INVALID__ = true;
+    } else {
+      window.__DOCUMENT_ROUTE_TOKEN__ = String(token);
+      window.__PUBLIC_ROUTE_INVALID__ = false;
+    }
+  } catch (_) {
+    window.__DOCUMENT_ROUTE_TOKEN__ = '';
+    window.__PUBLIC_ROUTE_INVALID__ = true;
+  }
 })();
 </script><base id="app-base" href="/"><script>
 (function () {
