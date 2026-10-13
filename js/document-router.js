@@ -9,35 +9,22 @@
   // The root index loads the viewer with ?__blank=1, so the viewer must stay blank
   // even if the app later removes that query parameter from its internal URL.
   var forceBlank = false;
-  try {
-    forceBlank = new URLSearchParams(location.search).get('__blank') === '1';
-  } catch (_) {}
 
   function rootUrl(relative) {
     return root.replace(/\/$/, '') + '/' + String(relative || '').replace(/^\/+/, '');
   }
 
   function currentToken() {
-    if (window.__DOCUMENT_ROUTE_TOKEN__) return String(window.__DOCUMENT_ROUTE_TOKEN__);
-    var path = decodeURIComponent(location.pathname || '');
-    var marker = '/files-portal/';
-    var at = path.indexOf(marker);
-    if (at < 0) return '';
-    return path.slice(at + marker.length).replace(/\/+$/, '').split('/')[0];
+    // Strict routing: only the token explicitly supplied by the outer router is valid.
+    // Never fall back to location.pathname, bootstrap route, a previous token, or a default record.
+    return window.__DOCUMENT_ROUTE_TOKEN__ ? String(window.__DOCUMENT_ROUTE_TOKEN__) : '';
   }
 
   function isDocumentApi(url) {
     return String(url || '').indexOf('ViewDocumentV2') !== -1;
   }
 
-  function restorePublicRoute() {
-    var token = window.__DOCUMENT_ROUTE_TOKEN__;
-    if (!token || forceBlank) return;
-    try {
-      var base = root.replace(/\/$/, '');
-      history.replaceState(history.state, '', base + '/files-portal/' + encodeURIComponent(String(token)));
-    } catch (_) {}
-  }
+  function restorePublicRoute() { /* parent URL is already the exact public route */ }
 
   function DocumentNotFoundError(message) {
     this.name = 'DocumentNotFoundError';
@@ -49,6 +36,7 @@
 
   function showNotFoundPage() {
     if (window.__DOCUMENT_NOT_FOUND_SHOWN__) return;
+    try { if (window.parent && window.parent !== window) window.parent.postMessage({ type: 'DOCUMENT_NOT_FOUND' }, location.origin); } catch (_) {}
     window.__DOCUMENT_NOT_FOUND_SHOWN__ = true;
 
     try {
@@ -112,8 +100,15 @@
     if (!nativeFetch) return Promise.reject(new Error('fetch is unavailable'));
     var token = currentToken();
     return loadRoutes().then(function (routes) {
-      var id = forceBlank ? '__blank__' : routes[token];
-      if (!id) throw new DocumentNotFoundError('No document is mapped to token: ' + token);
+      if (!token || !routes || !Object.prototype.hasOwnProperty.call(routes, token)) {
+        throw new DocumentNotFoundError('No document is mapped to token: ' + token);
+      }
+      var id = routes[token];
+      if (typeof id !== 'string' && typeof id !== 'number') {
+        throw new DocumentNotFoundError('Invalid document mapping for token: ' + token);
+      }
+      id = String(id).trim();
+      if (!id) throw new DocumentNotFoundError('Invalid document mapping for token: ' + token);
       return Promise.all([
         nativeFetch(rootUrl('data/' + id + '.json'), { cache: 'no-store' }).then(function (r) {
           if (!r.ok) {

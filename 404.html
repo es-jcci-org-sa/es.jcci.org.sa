@@ -5,36 +5,71 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <title>Error 404</title>
   <style>
-    html,body{margin:0;width:100%;min-height:100%;background:#fff}
-    body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-content:center;font-family:Arial,Helvetica,sans-serif;color:#111;text-align:center}
-    .error404 h1{margin:0 0 8px;font-size:32px;line-height:1.15;font-weight:700}
-    .error404 p{margin:0;font-size:14px;line-height:1.4;font-weight:400;color:#444}
+    html,body{margin:0;width:100%;height:100%;min-height:100%;background:#fff;overflow:hidden}
+    body{font-family:Arial,Helvetica,sans-serif;color:#111}
+    #route-viewer{position:fixed;inset:0;width:100%;height:100%;border:0;background:#fff;display:none}
+    #error404{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#fff;text-align:center}
+    #error404 h1{margin:0 0 8px;font-size:32px;line-height:1.15;font-weight:700}
+    #error404 p{margin:0;font-size:14px;line-height:1.4;font-weight:400;color:#444}
   </style>
+</head>
+<body>
+  <main id="error404" role="main"><div><h1>Error 404</h1><p>Page not found.</p></div></main>
+  <iframe id="route-viewer" title="Document viewer"></iframe>
   <script>
   (function () {
     'use strict';
-    try {
-      var path = decodeURIComponent(location.pathname || '');
-      var marker = '/files-portal/';
-      var at = path.indexOf(marker);
-      if (at < 0) return;
+    var marker = '/files-portal/';
+    var path;
+    try { path = decodeURIComponent(location.pathname || ''); } catch (_) { path = location.pathname || ''; }
+    var at = path.indexOf(marker);
+    if (at < 0) return; // domain/root or unrelated path -> keep Error 404
 
-      var token = path.slice(at + marker.length).replace(/^\/+|\/+$/g, '');
-      if (!token || token.indexOf('/') !== -1 || token.toLowerCase() === 'viewer.html' || token.toLowerCase() === 'index.html') return;
+    var token = path.slice(at + marker.length).replace(/^\/+|\/+$/g, '');
+    if (!token || token.indexOf('/') !== -1 || /^(?:viewer|index)\.html$/i.test(token)) return;
 
-      var deploymentBase = path.slice(0, at).replace(/\/+$/, '');
-      var viewer = (deploymentBase || '') + '/files-portal/viewer.html?__route=' + encodeURIComponent(token);
+    var deploymentBase = path.slice(0, at).replace(/\/+$/, '');
+    var root = (deploymentBase || '') + '/';
+    function url(rel){ return root.replace(/\/$/,'') + '/' + String(rel||'').replace(/^\/+/, ''); }
+    function notFound(){
+      document.title='Error 404';
+      var frame=document.getElementById('route-viewer');
+      var err=document.getElementById('error404');
+      if(frame){ frame.removeAttribute('src'); frame.style.display='none'; }
+      if(err) err.style.display='flex';
+    }
+    function okResponse(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r; }
 
-      // Important: viewer.html is a real file (HTTP 200). It restores the clean URL
-      // before Angular/document-router start, so every token can come only from routes.json.
-      location.replace(viewer);
-    } catch (_) {}
+    // Resolve the exact public token only. No fallback/default record is allowed.
+    fetch(url('data/routes.json'), {cache:'no-store'})
+      .then(okResponse).then(function(r){ return r.json(); })
+      .then(function(routes){
+        if (!routes || !Object.prototype.hasOwnProperty.call(routes, token)) throw new Error('TOKEN_NOT_FOUND');
+        var id = routes[token];
+        if (typeof id !== 'string' && typeof id !== 'number') throw new Error('BAD_ROUTE');
+        id = String(id).trim();
+        if (!id) throw new Error('BAD_ROUTE');
+        // Validate both files before starting the viewer, so a missing file never falls through to another record.
+        return Promise.all([
+          fetch(url('data/'+encodeURIComponent(id)+'.json'), {cache:'no-store'}).then(okResponse),
+          fetch(url('data/'+encodeURIComponent(id)+'.pdf'), {cache:'no-store'}).then(okResponse)
+        ]);
+      })
+      .then(function(){
+        var frame=document.getElementById('route-viewer');
+        var err=document.getElementById('error404');
+        if(err) err.style.display='none';
+        frame.style.display='block';
+        frame.src = url('files-portal/viewer.html') + '?__route=' + encodeURIComponent(token);
+        document.title='';
+      })
+      .catch(function(){ notFound(); });
+
+    window.addEventListener('message', function(ev){
+      if (ev.origin !== location.origin) return;
+      if (ev.data && ev.data.type === 'DOCUMENT_NOT_FOUND') notFound();
+    });
   })();
   </script>
-</head>
-<body>
-  <main class="error404" role="main">
-    <div><h1>Error 404</h1><p>Page not found.</p></div>
-  </main>
 </body>
 </html>

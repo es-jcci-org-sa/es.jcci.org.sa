@@ -1,25 +1,28 @@
 <!DOCTYPE html><html lang="ar" dir="rtl"><head><script>
 (function () {
-  // Keep the requested public token for document-router, but bootstrap the
-  // captured Angular app on the original encrypted route it accepts.
+  // The public token is passed explicitly by the outer 404 router. It is the ONLY token
+  // document-router may use. Angular is bootstrapped on a known syntactically valid
+  // internal route inside this iframe; the parent address bar never changes.
   try {
     var params = new URLSearchParams(location.search || '');
     var routeToken = params.get('__route');
-    if (!routeToken) return;
-
-    window.__DOCUMENT_ROUTE_TOKEN__ = routeToken;
+    if (!routeToken) {
+      window.__DOCUMENT_ROUTE_TOKEN__ = '';
+      return;
+    }
+    window.__DOCUMENT_ROUTE_TOKEN__ = String(routeToken);
 
     var path = decodeURIComponent(location.pathname || '');
     var marker = '/files-portal/';
     var at = path.indexOf(marker);
     if (at < 0) return;
-
     var deploymentBase = path.slice(0, at).replace(/\/+$/, '');
-    var internalToken = 'U2FsdGVkX1_RJ5EuawYTfCX6-e8APfHJTQMmZsx4i1vd_9PyyxqkpCK2WeB_4UjnXBTXvWvZebgiQkSGw5nFn9LTfQ';
-    history.replaceState(history.state, '', (deploymentBase || '') + marker + internalToken);
+    // Bootstrap-only route. It is never used to choose document data.
+    var bootstrapToken = 'U2FsdGVkX1_RJ5EuawYTfCX6-e8APfHJTQMmZsx4i1vd_9PyyxqkpCK2WeB_4UjnXBTXvWvZebgiQkSGw5nFn9LTfQ';
+    history.replaceState(history.state, '', (deploymentBase || '') + marker + bootstrapToken);
   } catch (_) {}
 })();
-</script><base id="app-base" href="/"><script>
+<base id="app-base" href="/"><script>
 (function () {
   try {
     function cleanPath(path) {
