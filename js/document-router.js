@@ -15,9 +15,17 @@
   }
 
   function currentToken() {
-    // Strict routing: only the token explicitly supplied by the outer router is valid.
-    // Never fall back to location.pathname, bootstrap route, a previous token, or a default record.
-    return window.__DOCUMENT_ROUTE_TOKEN__ ? String(window.__DOCUMENT_ROUTE_TOKEN__) : '';
+    // Strict routing: use only the exact public token passed by the outer router.
+    // Never use the Angular bootstrap URL, a previous token, or a default record.
+    if (window.__DOCUMENT_ROUTE_TOKEN__) return String(window.__DOCUMENT_ROUTE_TOKEN__);
+    // Safety only for very early execution before the bootstrap helper sets the global.
+    // This reads the same explicit __route value; it is NOT a fallback to another record.
+    try {
+      var q = new URLSearchParams(location.search || '').get('__route');
+      return q ? String(q) : '';
+    } catch (_) {
+      return '';
+    }
   }
 
   function isDocumentApi(url) {
