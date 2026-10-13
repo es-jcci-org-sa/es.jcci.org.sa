@@ -1,0 +1,19 @@
+{
+  "succeeded": true,
+  "message": "",
+  "errors": [],
+  "data": {
+    "documentNumber": "12293365",
+    "documentStatus": 1,
+    "documentStatusTitle": "سارية",
+    "facilityTitle": "مؤسسة امجاد التعمر للمقاولات العامة",
+    "created": "2026-10-11T00:45:05.219369",
+    "contentList": [],
+    "subscriptionNumber": "364871",
+    "unified700Number": "7017484846",
+    "fileType": ".pdf",
+    "applicantName": "مها راجح ناصر الجهني",
+    "facilityCrNumber": 4030384869,
+    "serviceId": 11
+  }
+}
