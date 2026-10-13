@@ -4,6 +4,7 @@
   var root = (window.__UNIFIED_DEPLOYMENT_ROOT__ || '/');
   var nativeFetch = window.fetch ? window.fetch.bind(window) : null;
   var routesPromise = null;
+
   var forceBlank = false;
 
   function rootUrl(relative) {
@@ -12,24 +13,25 @@
 
   function currentToken() {
     if (window.__DOCUMENT_ROUTE_TOKEN__) return String(window.__DOCUMENT_ROUTE_TOKEN__);
-    try {
-      var path = decodeURIComponent(location.pathname || '');
-      var marker = '/files-portal/';
-      var at = path.indexOf(marker);
-      if (at < 0) return '';
-      var token = path.slice(at + marker.length).replace(/^\/+|\/+$/g, '');
-      if (!token || token.indexOf('/') !== -1 || /^(?:viewer|index)\.html$/i.test(token)) return '';
-      return token;
-    } catch (_) {
-      return '';
-    }
+    var path = decodeURIComponent(location.pathname || '');
+    var marker = '/files-portal/';
+    var at = path.indexOf(marker);
+    if (at < 0) return '';
+    return path.slice(at + marker.length).replace(/\/+$/, '').split('/')[0];
   }
 
   function isDocumentApi(url) {
     return String(url || '').indexOf('ViewDocumentV2') !== -1;
   }
 
-  function restorePublicRoute() { /* exact public URL stays unchanged */ }
+  function restorePublicRoute() {
+    var token = window.__DOCUMENT_ROUTE_TOKEN__;
+    if (!token || forceBlank) return;
+    try {
+      var base = root.replace(/\/$/, '');
+      history.replaceState(history.state, '', base + '/files-portal/' + encodeURIComponent(String(token)));
+    } catch (_) {}
+  }
 
   function DocumentNotFoundError(message) {
     this.name = 'DocumentNotFoundError';
@@ -225,9 +227,5 @@
     RoutedXHR.prototype = NativeXHR.prototype;
     Object.keys(NativeXHR).forEach(function (key) { try { RoutedXHR[key] = NativeXHR[key]; } catch (_) {} });
     window.XMLHttpRequest = RoutedXHR;
-  }
-
-  if (window.__PUBLIC_ROUTE_INVALID__) {
-    setTimeout(showNotFoundPage, 0);
   }
 })();
